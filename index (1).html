@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>УНО онлайн</title>
+<style>
+  :root { --gold:#d9b25a; --red:#d8352d; --yellow:#f4b81a; --green:#2f9d55; --blue:#2b6bd1; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; color:#f4ead2; font-family:"Trebuchet MS",system-ui,sans-serif; padding:12px;
+    background:radial-gradient(ellipse at 50% 35%,#2b170d,#090504 72%) fixed; display:flex; flex-direction:column; align-items:center; }
+  body::before { content:""; position:fixed; inset:0; opacity:.06; pointer-events:none;
+    background:repeating-conic-gradient(from 45deg,#d9b25a 0 25%,transparent 0 50%) 0 0/46px 46px; }
+  h1 { font-family:Georgia,serif; font-size:3rem; margin:6px 0 0; color:var(--gold); letter-spacing:.08em; text-shadow:0 3px 0 #000; }
+  .sub { margin:0 0 6px; color:#b9a679; }
+  .panel { width:min(460px,100%); background:#150d09dd; border:1px solid #6b4a1f; border-radius:16px; padding:20px; margin-top:8px; box-shadow:0 20px 50px #000a; position:relative; }
+  input, button { font:inherit; border-radius:10px; border:0; padding:11px 13px; }
+  input { width:100%; background:#f4ead2; color:#161008; }
+  button { cursor:pointer; background:#2a1b12; color:#f4ead2; border:1px solid #6b4a1f; }
+  button.gold { background:linear-gradient(#f0cf7a,#c19a3e); color:#1a1208; font-weight:700; width:100%; margin-top:12px; border:0; }
+  button.alt { background:transparent; }
+  button:disabled { opacity:.45; cursor:default; }
+  :focus-visible { outline:3px solid #fff; outline-offset:2px; }
+  .hidden { display:none !important; }
+  .lbl { margin:14px 0 6px; color:#c7b58a; font-size:.9rem; }
+  .avs { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+  .avs button { font-size:1.7rem; padding:4px; border-radius:50%; aspect-ratio:1; }
+  .avs button.on { border:2px solid var(--gold); box-shadow:0 0 14px #d9b25a88; background:#3a2616; }
+  .modes { display:grid; gap:8px; }
+  .mode { display:flex; justify-content:space-between; gap:10px; text-align:left; }
+  .mode.on { border-color:var(--gold); background:#3a2616; box-shadow:inset 0 0 0 1px var(--gold); }
+  .mode span { color:#b9a679; font-size:.85rem; }
+  .or { text-align:center; color:#9b8a64; margin:14px 0 8px; font-size:.9rem; }
+  .row { display:flex; gap:8px; } .row input { text-transform:uppercase; letter-spacing:.3em; text-align:center; } .row button { width:auto; }
+  .err { color:#ff9d8d; min-height:1.2em; margin-top:8px; }
+  #mute { position:fixed; top:10px; right:10px; z-index:70; border-radius:50%; width:42px; height:42px; padding:0; }
+  #toast { position:fixed; top:14px; left:50%; transform:translateX(-50%); background:#000d; border:1px solid var(--gold); padding:10px 18px; border-radius:20px; z-index:80; font-weight:700; }
+
+  .code { font:800 2.8rem Georgia,serif; letter-spacing:.3em; text-align:center; color:var(--gold); margin:6px 0; }
+  .slots { list-style:none; padding:0; margin:12px 0; display:grid; gap:8px; }
+  .slots li { display:flex; align-items:center; gap:12px; padding:8px 12px; background:#00000055; border-radius:12px; border:1px dashed #6b4a1f; }
+  .slots li.full { border-style:solid; }
+  .slots .em { font-size:1.6rem; width:40px; text-align:center; }
+  .slots small { margin-left:auto; color:#b9a679; }
+
+  #game { width:min(1100px,100%); }
+  .stage { position:relative; aspect-ratio:16/9; }
+  .table { position:absolute; left:12%; right:12%; top:17%; bottom:17%; border-radius:999px;
+    background:linear-gradient(150deg,#7a4524,#2a120a 55%,#5a2f16); box-shadow:0 30px 60px #000c, inset 0 0 0 3px #c9a24a; }
+  .felt { position:absolute; inset:7% 11%; border-radius:999px; background:radial-gradient(ellipse at 50% 38%,#157a50,#0a4a31 62%,#06301f); box-shadow:inset 0 0 50px #000d, 0 0 0 clamp(6px,1.2vw,14px) #1a110d; }
+  .felt::before { content:""; position:absolute; inset:6% 9%; border:2px solid #c9a24a99; border-radius:999px; }
+  .felt::after { content:"♠"; position:absolute; inset:0; display:grid; place-items:center; font-size:clamp(70px,13vw,170px); color:#c9a24a; opacity:.12; }
+  .cup { position:absolute; width:3%; aspect-ratio:1; border-radius:50%; background:radial-gradient(#6b4d15,#e8c766 62%,#8a6a22); box-shadow:inset 0 0 6px #000; }
+  .chair { position:absolute; background:linear-gradient(160deg,#352920,#120d0a); border:2px solid #b8863a; box-shadow:0 14px 26px #000b, inset 0 0 18px #000; }
+  .chair.t { left:38%; width:24%; top:0; height:14%; border-radius:26px 26px 10px 10px; }
+  .chair.b { left:38%; width:24%; bottom:0; height:14%; border-radius:10px 10px 26px 26px; }
+  .chair.l { left:0; width:11%; top:30%; height:40%; border-radius:26px 10px 10px 26px; }
+  .chair.r { right:0; width:11%; top:30%; height:40%; border-radius:10px 26px 26px 10px; }
+
+  .seat { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:3px; z-index:3; }
+  .seat.t { left:50%; top:8%; } .seat.b { left:50%; top:91%; } .seat.l { left:5.5%; top:50%; } .seat.r { left:94.5%; top:50%; }
+  .av { position:relative; width:clamp(34px,5.4vw,58px); aspect-ratio:1; border-radius:50%; display:grid; place-items:center; font-size:clamp(1.2rem,3vw,2rem);
+    background:radial-gradient(#4a3322,#1d130d); border:3px solid #b8863a; }
+  .seat.team0 .av { border-color:#f0cf7a; } .seat.team1 .av { border-color:#5ad1e6; }
+  .seat.turn .av { animation:pulse 1.1s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 #ffd75a99; } 50% { box-shadow:0 0 0 10px #ffd75a00, 0 0 22px 6px #ffd75acc; } }
+  .cb { position:absolute; right:-8px; bottom:-6px; min-width:22px; height:22px; border-radius:11px; background:var(--red); color:#fff; font-size:.75rem; display:grid; place-items:center; border:2px solid #fff; }
+  .nm { max-width:min(120px,11vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:clamp(.62rem,1.2vw,.85rem); background:#000a; padding:2px 8px; border-radius:10px; }
+  .unob { background:var(--yellow); color:#111; font-weight:800; font-size:.7rem; padding:1px 7px; border-radius:8px; animation:pulse 0.7s infinite; }
+
+  .fan { position:absolute; display:flex; z-index:2; transform:translate(-50%,-50%); }
+  .fan.t { left:50%; top:25%; } .fan.l { left:17%; top:50%; flex-direction:column; } .fan.r { left:83%; top:50%; flex-direction:column; }
+  .mini { width:clamp(20px,3.2vw,36px); aspect-ratio:2/3; border-radius:5px; border:2px solid #fff; flex:none;
+    background:radial-gradient(ellipse at 50% 50%,var(--red) 0 36%,#111 38%); box-shadow:0 2px 6px #000a; }
+  .fan.t .mini + .mini { margin-left:calc(clamp(10px,1.8vw,20px)*-1); }
+  .fan.l .mini, .fan.r .mini { aspect-ratio:3/2; width:clamp(28px,4.4vw,50px); }
+  .fan.l .mini + .mini, .fan.r .mini + .mini { margin-top:calc(clamp(8px,1.4vw,16px)*-1); }
+
+  .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:6px; z-index:2; }
+  .piles { display:flex; gap:clamp(14px,4vw,44px); align-items:center; }
+  .dir { font-size:clamp(1.2rem,3vw,2rem); color:#f0cf7a; opacity:.8; }
+  .deck { width:clamp(60px,9vw,100px); aspect-ratio:2/3; border-radius:10px; border:3px solid #fff; padding:0; cursor:pointer; color:#ffd75a; font:800 clamp(.9rem,2vw,1.4rem) Georgia,serif;
+    background:radial-gradient(ellipse at 50% 50%,var(--red) 0 40%,#111 42%); box-shadow:3px 3px 0 #0007,6px 6px 0 #0005,9px 9px 0 #0003; }
+  .deck.go { animation:pulse 1.1s infinite; }
+
+  .card { position:relative; width:clamp(52px,8vw,84px); aspect-ratio:2/3; flex:none; border-radius:10px; border:3px solid #fff; color:#fff; padding:0; margin:0;
+    display:grid; place-items:center; font-weight:800; font-size:clamp(1.3rem,3.2vw,2rem); overflow:hidden; box-shadow:0 6px 14px #0009; text-shadow:0 2px 0 #0005; }
+  .card::before { content:""; position:absolute; width:78%; height:58%; border-radius:50%; background:#ffffff2e; transform:rotate(-28deg); }
+  .card b { position:relative; z-index:1; font:inherit; }
+  .card i { position:absolute; top:3px; left:6px; font-size:.42em; font-style:normal; z-index:1; }
+  .card.red { background:var(--red); } .card.yellow { background:var(--yellow); } .card.green { background:var(--green); } .card.blue { background:var(--blue); }
+  .card.wild { background:conic-gradient(var(--red) 0 25%,var(--blue) 0 50%,var(--green) 0 75%,var(--yellow) 0); }
+  .card.big { width:clamp(60px,9vw,100px); }
+  .card.ring { box-shadow:0 0 30px 8px var(--cc,#fff); }
+
+  .status { text-align:center; font-size:1.15rem; font-weight:700; margin:4px 0 0; min-height:1.5em; }
+  .log { text-align:center; color:#b9a679; min-height:1.4em; }
+  .swatch { display:inline-block; width:16px; height:16px; border-radius:50%; vertical-align:-2px; border:2px solid #fff; }
+  .hand { display:flex; flex-wrap:wrap; justify-content:center; gap:clamp(4px,1vw,10px); padding:14px 0 24px; }
+  .hand .card { cursor:pointer; transition:transform .15s,opacity .2s; }
+  .hand .card.ok { box-shadow:0 0 0 3px var(--yellow),0 6px 14px #0009; }
+  .hand .card.ok:hover { transform:translateY(-14px) scale(1.06); }
+  .hand .card.no { opacity:.45; cursor:not-allowed; }
+  .hand .card.new { animation:deal .45s both; animation-delay:calc(var(--i)*45ms); }
+  @keyframes deal { from { transform:translateY(-120px) rotate(-18deg) scale(.5); opacity:0; } }
+  @media (max-width:600px) { .stage { aspect-ratio:4/3; } h1 { font-size:2.2rem; } }
+
+  #picker, #win { position:fixed; inset:0; background:#000b; display:flex; align-items:center; justify-content:center; z-index:60; flex-direction:column; gap:14px; text-align:center; }
+  #picker .box { background:#150d09; border:1px solid var(--gold); padding:22px; border-radius:16px; }
+  #picker .row { margin-top:12px; justify-content:center; }
+  #picker .row button { width:64px; height:64px; border-radius:50%; border:4px solid #fff; padding:0; }
+  #win h2 { font:800 clamp(1.8rem,5vw,3rem) Georgia,serif; color:var(--gold); margin:0; padding:0 16px; }
+  #win .trophy { font-size:5rem; animation:bounce .9s infinite alternate; }
+  @keyframes bounce { to { transform:translateY(-18px) rotate(6deg); } }
+  .cf { position:fixed; top:-16px; width:9px; height:14px; z-index:90; pointer-events:none; animation:fall linear forwards; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(720deg); } }
+  @media (prefers-reduced-motion:reduce) { .seat.turn .av, .deck.go, .unob, #win .trophy { animation:none; } }
+</style>
+</head>
+<body>
+<button id="mute" aria-label="Звук вкл/выкл">🔊</button>
+<h1>УНО</h1>
+<p class="sub">Онлайн-стол для друзей</p>
+
+<div id="login" class="panel">
+  <label>Ваш ник<input id="name" maxlength="16" placeholder="Например, Алекс" autocomplete="nickname"></label>
+  <div class="lbl">Аватар</div><div id="avs" class="avs"></div>
+  <div class="lbl">Режим игры (для новой комнаты)</div>
+  <div class="modes">
+    <button class="mode on" data-m="1v1"><b>1 на 1</b><span>Дуэль · 2 игрока</span></button>
+    <button class="mode" data-m="2v2"><b>2 на 2</b><span>Команды · 4 игрока</span></button>
+    <button class="mode" data-m="ffa"><b>Каждый за себя</b><span>4 игрока</span></button>
+  </div>
+  <button id="create" class="gold">Создать комнату</button>
+  <div class="or">или войдите к друзьям по коду</div>
+  <div class="row"><input id="codeIn" maxlength="4" placeholder="КОД" aria-label="Код комнаты"><button id="join" class="alt">Войти</button></div>
+  <div id="err" class="err" role="alert"></div>
+</div>
+
+<div id="lobby" class="panel hidden">
+  <div id="lobbyMode" style="text-align:center;color:#b9a679"></div>
+  <div class="code" id="roomCode"></div>
+  <button id="copy" class="alt" style="width:100%">Скопировать ссылку для друзей</button>
+  <ul class="slots" id="slots"></ul>
+  <button id="start" class="gold">Начать игру</button>
+  <div id="lobbyLog" style="text-align:center;color:#b9a679;margin-top:8px"></div>
+</div>
+
+<div id="game" class="hidden">
+  <div class="stage">
+    <div class="table">
+      <div class="felt"></div>
+      <i class="cup" style="left:17%;top:2%"></i><i class="cup" style="right:17%;top:2%"></i>
+      <i class="cup" style="left:17%;bottom:2%"></i><i class="cup" style="right:17%;bottom:2%"></i>
+    </div>
+    <div id="seats"></div>
+    <div class="center">
+      <div class="dir" id="dir">↻</div>
+      <div class="piles">
+        <button class="deck" id="deck" title="Взять карту и пропустить ход" aria-label="Взять карту">УНО</button>
+        <div id="top"></div>
+      </div>
+    </div>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="log" id="log"></div>
+  <div class="hand" id="hand"></div>
+</div>
+
+<div id="picker" class="hidden"><div class="box">Выберите цвет
+  <div class="row">
+    <button style="background:var(--red)" data-c="red" aria-label="Красный"></button>
+    <button style="background:var(--yellow)" data-c="yellow" aria-label="Жёлтый"></button>
+    <button style="background:var(--green)" data-c="green" aria-label="Зелёный"></button>
+    <button style="background:var(--blue)" data-c="blue" aria-label="Синий"></button>
+  </div></div></div>
+
+<div id="win" class="hidden"><div class="trophy">🏆</div><h2 id="winText"></h2>
+  <button id="again" class="gold" style="width:auto;padding:12px 30px">Сыграть ещё раз</button>
+  <div id="winWait" style="color:#b9a679">Ждём, пока хозяин комнаты начнёт новую партию…</div></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const AV = ['🦊','🐼','🐯','🦁','🐸','🐵','🦄','🐙','🦉','🐲','🤖','👽'];
+const HEX = { red:'#d8352d', yellow:'#f4b81a', green:'#2f9d55', blue:'#2b6bd1' };
+const MODE_RU = { '1v1':'1 на 1 — дуэль', '2v2':'2 на 2 — команды', ffa:'Каждый за себя' };
+const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch {} };
+
+// ---------- Звуки (синтез, без файлов) ----------
+let AC, muted = false;
+const ctx = () => (AC = AC || new (window.AudioContext || window.webkitAudioContext)());
+function tone(f, d = .12, type = 'sine', v = .13, when = 0, to = 0) {
+  if (muted) return;
+  const c = ctx(), t = c.currentTime + when, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + d);
+}
+function noise(d = .1, v = .12) {
+  if (muted) return;
+  const c = ctx(), n = c.sampleRate * d, b = c.createBuffer(1, n, c.sampleRate), a = b.getChannelData(0);
+  for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const s = c.createBufferSource(), g = c.createGain(), f = c.createBiquadFilter();
+  f.type = 'highpass'; f.frequency.value = 1800; g.gain.value = v;
+  s.buffer = b; s.connect(f).connect(g).connect(c.destination); s.start();
+}
+const SFX = {
+  play: () => { noise(.08, .16); tone(420, .12, 'triangle', .14, 0, 220); },
+  draw: () => { noise(.2, .1); },
+  turn: () => { tone(784, .12, 'sine', .12); tone(1175, .18, 'sine', .1, .1); },
+  uno:  () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .14, 'square', .07, i * .07)),
+  win:  () => [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, .22, 'triangle', .14, i * .13)),
+  bad:  () => tone(160, .25, 'sawtooth', .1, 0, 90),
+};
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊'; };
+
+// ---------- Профиль и вход ----------
+let me = { avatar: store('avatar') || AV[0], mode: '1v1' };
+$('name').value = store('name') || '';
+const qc = new URLSearchParams(location.search).get('code'); if (qc) $('codeIn').value = qc;
+AV.forEach((a) => { const b = document.createElement('button'); b.textContent = a; b.onclick = () => { me.avatar = a; mark(); }; $('avs').appendChild(b); });
+const mark = () => [...$('avs').children].forEach((b) => b.classList.toggle('on', b.textContent === me.avatar));
+mark();
+document.querySelectorAll('.mode').forEach((b) => b.onclick = () => {
+  me.mode = b.dataset.m; document.querySelectorAll('.mode').forEach((x) => x.classList.toggle('on', x === b));
+});
+const prof = () => { const name = $('name').value.trim() || 'Игрок'; store('name', name); store('avatar', me.avatar); return { name, avatar: me.avatar }; };
+
+const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+const send = (o) => ws.readyState === 1 && ws.send(JSON.stringify(o));
+ws.onclose = () => toast('Соединение потеряно. Обновите страницу.');
+$('create').onclick = () => send({ type: 'create', mode: me.mode, ...prof() });
+$('join').onclick = () => send({ type: 'join', code: $('codeIn').value, ...prof() });
+$('start').onclick = () => send({ type: 'start' });
+$('deck').onclick = () => send({ type: 'draw' });
+$('again').onclick = () => send({ type: 'again' });
+$('copy').onclick = () => navigator.clipboard.writeText(`${location.origin}/?code=${S.code}`).then(() => toast('Ссылка скопирована'));
+document.querySelectorAll('#picker button').forEach((b) => b.onclick = () => {
+  send({ type: 'play', cardId: pendingWild, color: b.dataset.c }); $('picker').classList.add('hidden');
+});
+
+let S = null, prev = null, prevHand = new Set(), pendingWild = null;
+ws.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+  if (m.type === 'error') { $('err').textContent = m.text; SFX.bad(); toast(m.text); }
+  else if (m.type === 'state') { S = m; render(); }
+};
+function toast(t) {
+  let el = $('toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+  el.textContent = t; el.hidden = false; clearTimeout(el.t); el.t = setTimeout(() => (el.hidden = true), 2200);
+}
+
+// ---------- Карты и анимации ----------
+const label = (v) => (v === 'skip' ? '⊘' : v === 'reverse' ? '⇄' : v === 'wild' ? '★' : v);
+function cardEl(c, tag = 'div') {
+  const el = document.createElement(tag);
+  el.className = 'card ' + c.color;
+  el.innerHTML = `<i>${label(c.value)}</i><b>${label(c.value)}</b>`;
+  return el;
+}
+const playable = (c) => c.color === 'wild' || c.color === S.color || c.value === S.top.value;
+const seatEl = (id) => $('seat-' + id);
+const center = (r) => [r.left + r.width / 2, r.top + r.height / 2];
+
+function slideIn(el, from) {
+  if (!el || !from) return;
+  const [ax, ay] = center(el.getBoundingClientRect()), [bx, by] = center(from.getBoundingClientRect());
+  el.animate([{ transform: `translate(${bx - ax}px,${by - ay}px) scale(.55) rotate(-25deg)`, opacity: .3 }, { transform: 'none', opacity: 1 }],
+    { duration: 450, easing: 'cubic-bezier(.2,.9,.3,1.15)' });
+}
+function fly(from, to) {
+  if (!from || !to) return;
+  const [ax, ay] = center(from.getBoundingClientRect()), [bx, by] = center(to.getBoundingClientRect());
+  const el = document.createElement('div'); el.className = 'mini';
+  Object.assign(el.style, { position: 'fixed', left: ax + 'px', top: ay + 'px', zIndex: 50, pointerEvents: 'none' });
+  document.body.appendChild(el);
+  el.animate([{ transform: 'translate(-50%,-50%)' }, { transform: `translate(calc(-50% + ${bx - ax}px),calc(-50% + ${by - ay}px)) rotate(20deg)` }],
+    { duration: 480, easing: 'ease-in' }).onfinish = () => el.remove();
+}
+function confetti() {
+  for (let i = 0; i < 90; i++) {
+    const d = document.createElement('div'); d.className = 'cf';
+    d.style.left = Math.random() * 100 + 'vw'; d.style.background = Object.values(HEX).concat('#fff', '#f0cf7a')[i % 6];
+    d.style.animationDuration = 2.2 + Math.random() * 2.2 + 's'; d.style.animationDelay = Math.random() * .8 + 's';
+    document.body.appendChild(d); setTimeout(() => d.remove(), 5500);
+  }
+}
+
+// ---------- Отрисовка ----------
+const posOf = (i) => {
+  const n = S.players.length, mi = S.players.findIndex((p) => p.id === S.you), r = (i - mi + n) % n;
+  return n === 2 ? (r === 0 ? 'b' : 't') : ['b', 'l', 't', 'r'][r];
+};
+
+function renderLobby() {
+  $('roomCode').textContent = S.code;
+  $('lobbyMode').textContent = 'Режим: ' + MODE_RU[S.mode];
+  $('slots').innerHTML = '';
+  for (let k = 0; k < S.need; k++) {
+    const p = S.players[k], li = document.createElement('li');
+    li.className = p ? 'full' : '';
+    li.innerHTML = `<span class="em">${p ? p.avatar : '⏳'}</span><span></span><small></small>`;
+    li.children[1].textContent = p ? p.name + (p.id === S.you ? ' (вы)' : '') : 'Ждём игрока…';
+    if (S.mode === '2v2') li.children[2].textContent = `Команда ${(k % 2) + 1}`;
+    $('slots').appendChild(li);
+  }
+  const ready = S.players.length === S.need;
+  $('start').classList.toggle('hidden', !S.isHost);
+  $('start').disabled = !ready;
+  $('lobbyLog').textContent = S.mode === '2v2' ? 'Напарник сидит напротив: 1-й и 3-й игроки — одна команда.' : (ready && !S.isHost ? 'Ждём, пока хозяин начнёт игру…' : '');
+}
+
+function renderSeats() {
+  const box = $('seats'); box.innerHTML = '';
+  S.players.forEach((p, i) => {
+    const pos = posOf(i);
+    const ch = document.createElement('div'); ch.className = 'chair ' + pos; box.appendChild(ch);
+    const st = document.createElement('div');
+    st.id = 'seat-' + p.id;
+    st.className = `seat ${pos}` + (p.id === S.turn && !S.winner ? ' turn' : '') + (p.team != null ? ' team' + p.team : '');
+    st.innerHTML = `<div class="av">${p.avatar}<span class="cb">${p.count}</span></div><div class="nm"></div>${p.count === 1 ? '<div class="unob">УНО!</div>' : ''}`;
+    st.querySelector('.nm').textContent = p.name + (p.id === S.you ? ' (вы)' : '');
+    box.appendChild(st);
+    if (p.id !== S.you) {
+      const f = document.createElement('div'); f.className = 'fan ' + pos;
+      for (let k = 0; k < Math.min(p.count, 12); k++) f.appendChild(Object.assign(document.createElement('div'), { className: 'mini' }));
+      box.appendChild(f);
+    }
+  });
+}
+
+function render() {
+  $('login').classList.add('hidden');
+  $('lobby').classList.toggle('hidden', S.started);
+  $('game').classList.toggle('hidden', !S.started);
+  if (!S.started) { renderLobby(); prev = S; prevHand = new Set(); $('win').classList.add('hidden'); return; }
+
+  const was = prev && prev.started, myTurn = S.turn === S.you && !S.winner;
+  renderSeats();
+  $('top').innerHTML = '';
+  const tc = cardEl(S.top); tc.id = 'topcard'; tc.classList.add('big', 'ring');
+  $('top').style.setProperty('--cc', HEX[S.color]); $('top').appendChild(tc);
+  $('dir').textContent = S.dir > 0 ? '↻' : '↺';
+  $('deck').disabled = !myTurn; $('deck').classList.toggle('go', myTurn);
+
+  const mi = S.players.findIndex((p) => p.id === S.you), turnP = S.players.find((p) => p.id === S.turn);
+  const sw = `<span class="swatch" style="background:${HEX[S.color]}"></span>`;
+  $('status').innerHTML = (myTurn ? 'Ваш ход' : 'Ходит ' + '<span id="tn"></span>') + ' · цвет: ' + sw;
+  if (!myTurn && $('tn')) $('tn').textContent = turnP.name;
+  $('log').textContent = (S.mode === '2v2' ? `Ваш напарник — ${S.players[(mi + 2) % 4].name}. ` : '') + (S.log || '');
+
+  $('hand').innerHTML = '';
+  S.hand.forEach((c, idx) => {
+    const el = cardEl(c, 'button'), ok = myTurn && playable(c);
+    el.classList.add(ok ? 'ok' : 'no'); el.disabled = !ok;
+    if (!prevHand.has(c.id)) { el.classList.add('new'); el.style.setProperty('--i', idx); }
+    el.onclick = () => {
+      if (c.color === 'wild') { pendingWild = c.id; $('picker').classList.remove('hidden'); }
+      else send({ type: 'play', cardId: c.id });
+    };
+    $('hand').appendChild(el);
+  });
+
+  // звуки и анимации по изменениям состояния
+  if (was && S.seq !== prev.seq) {
+    if (S.lastAct === 'play') { SFX.play(); slideIn($('topcard'), seatEl(S.lastId)); }
+    S.players.forEach((p) => {
+      const o = prev.players.find((q) => q.id === p.id);
+      if (o && p.count > o.count) { SFX.draw(); fly($('deck'), seatEl(p.id)); }
+    });
+    if (S.players.some((p) => p.count === 1 && (prev.players.find((q) => q.id === p.id) || {}).count > 1)) {
+      setTimeout(SFX.uno, 250); toast('УНО!');
+    }
+  }
+  if (myTurn && !(was && prev.turn === S.you && !prev.winner)) setTimeout(SFX.turn, 350);
+
+  $('win').classList.toggle('hidden', !S.winner);
+  if (S.winner) {
+    $('winText').textContent = S.winnerIds.includes(S.you) ? 'Вы победили!' : 'Победа: ' + S.winner;
+    $('again').classList.toggle('hidden', !S.isHost); $('winWait').classList.toggle('hidden', S.isHost);
+    if (!(prev && prev.winner)) { SFX.win(); confetti(); }
+  }
+  prev = S; prevHand = new Set(S.hand.map((c) => c.id));
+}
+</script>
+</body>
+</html>
